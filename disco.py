@@ -7,6 +7,7 @@ import aiohttp
 import io
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
+import random
 
 intents = discord.Intents.default()
 intents.voice_states = True
@@ -542,5 +543,14 @@ async def subway_vote(ctx, member: discord.Member):
         await _send_subway_message(ctx, f"{ctx.author.mention} updated their vote to {member.mention}.")
     else:
         await _send_subway_message(ctx, f"{ctx.author.mention} voted for {member.mention}.")
+
+
+@bot.command(name="roll")
+async def roll_command(ctx):
+    result = random.randint(1, 100)
+    if result == 67:
+        await ctx.send(f"{ctx.author.mention} rolled **{result}**. @everyone")
+    else:
+        await ctx.send(f"{ctx.author.mention} rolled **{result}**.")
 
 bot.run(os.getenv("DISCORD_TOKEN"))

@@ -2,3 +2,4 @@ discord.py
 PyNaCl
 gTTS
 aiohttp
+random
