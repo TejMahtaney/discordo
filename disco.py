@@ -3,6 +3,10 @@ from discord.ext import commands
 import asyncio
 from gtts import gTTS
 import os
+import aiohttp
+import io
+from datetime import datetime, time as dt_time
+from zoneinfo import ZoneInfo
 
 intents = discord.Intents.default()
 intents.voice_states = True
@@ -38,7 +42,217 @@ USER_ANNOUNCEMENTS = {
 }
 
 JOIN_IMAGE_CHANNEL_NAME = "general-assembly-hall"
-JOIN_IMAGE_PATH = r"C:\Users\tej12\OneDrive\Desktop\discord\adnan.webp"
+JOIN_IMAGE_URL = "https://raw.githubusercontent.com/TejMahtaney/discordo/main/adnan.webp"
+
+SUBWAY_CHANNEL_NAME = "general-assembly-hall"
+SUBWAY_TZ = ZoneInfo("Asia/Singapore")
+SUBWAY_ENTRY_OPEN_TIME = dt_time(15, 0)
+SUBWAY_VOTE_OPEN_TIME = dt_time(19, 0)
+SUBWAY_CLOSE_TIME = dt_time(22, 0)
+SUBWAY_MENU_FILE = "subway_menu.txt"
+
+SUBWAY_MENU_ITEMS = {
+    # Breads
+    "italian (white)",
+    "9-grain wheat / hearty multigrain",
+    "italian herbs & cheese",
+    "jalapeno cheddar",
+    "artisan flatbread",
+    "honey oat",
+    "parmesan oregano",
+    "monterey cheddar (select locations)",
+    "artisan italian",
+    "toasted rustic rye (new for 2026)",
+    "brioche-style bun (new for premium subs, 2026)",
+    "ghost pepper bread (limited time/select locations)",
+    "gluten-free (pre-packaged, available at some locations)",
+    # Wraps
+    "spinach wrap",
+    "tomato basil wrap",
+    "habanero wrap (select locations)",
+    "wheat wrap",
+    "lavash wrap",
+    # Proteins/Meats
+    "oven-roasted turkey",
+    "black forest ham",
+    "roast beef",
+    "genoa salami",
+    "pepperoni",
+    "capicola/capocollo",
+    "cold cut combo (turkey-based)",
+    "grilled chicken",
+    "rotisserie-style chicken",
+    "teriyaki chicken",
+    "buffalo chicken",
+    "chipotle chicken",
+    "steak (shaved)",
+    "meatballs (in meatball marinara)",
+    "tuna",
+    "bacon",
+    "veggie patty (vegetarian option)",
+    "seafood sensation (select locations)",
+    # Cheeses
+    "american",
+    "provolone",
+    "cheddar",
+    "pepper jack",
+    "mozzarella (shredded and fresh)",
+    "swiss",
+    "monterey jack (select locations)",
+    "parmesan",
+    # Vegetables
+    "lettuce",
+    "spinach",
+    "tomatoes",
+    "cucumbers",
+    "green peppers (bell peppers)",
+    "red onions",
+    "pickles",
+    "black olives",
+    "jalapenos",
+    "banana peppers",
+    "avocado (extra charge)",
+    "guacamole (extra charge, select locations)",
+    # Sauces & Dressings
+    "mayonnaise (regular & light mayo)",
+    "ranch dressing",
+    "chipotle southwest",
+    "baja chipotle",
+    "creamy sriracha (new for 2026)",
+    "roasted garlic aioli (upgraded for 2026)",
+    "caesar",
+    "peppercorn ranch",
+    "oil & vinegar",
+    "red wine vinegar",
+    "mvp parmesan vinaigrette / creamy italian mvp",
+    "subway vinaigrette",
+    "yellow mustard",
+    "honey mustard",
+    "dijon mustard",
+    "sweet onion (teriyaki)",
+    "buffalo sauce (frank's redhot)",
+    "bbq sauce",
+    "sriracha",
+    "marinara sauce",
+    "basil pesto (upgraded for 2026)",
+    # Seasonings/Extras
+    "salt",
+    "pepper",
+    "oregano",
+    "subway \"sub spice\"",
+}
+
+
+def _normalize_menu_item(text):
+    return " ".join(text.lower().strip().split())
+
+SUBWAY_STATE = {}
+SUBWAY_SCHEDULER_TASK = None
+
+
+def _sgt_now():
+    return datetime.now(tz=SUBWAY_TZ)
+
+
+def _get_subway_state(guild_id):
+    return SUBWAY_STATE.setdefault(
+        guild_id,
+        {
+            "entries_open": False,
+            "votes_open": False,
+            "entries": {},
+            "votes": {},
+            "last_open_date": None,
+            "last_vote_open_date": None,
+            "last_close_date": None,
+        },
+    )
+
+
+async def _announce_subway_open(guild):
+    state = _get_subway_state(guild.id)
+    state["entries_open"] = True
+    state["votes_open"] = False
+    state["entries"] = {}
+    state["votes"] = {}
+    state["last_open_date"] = _sgt_now().date()
+
+    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    if text_channel:
+        message = (
+            "Subway Thursday is now open for entries!\n"
+            "Rules: Thu only (SGT). One entry per user. One vote per user. No self-votes.\n"
+            "How to enter: !sandwich <ingredients>. Use the attached menu.\n"
+            "Voting opens at 7:00 PM SGT. Competition closes at 10:00 PM SGT."
+        )
+        if os.path.exists(SUBWAY_MENU_FILE):
+            await text_channel.send(message, file=discord.File(SUBWAY_MENU_FILE))
+        else:
+            await text_channel.send(message)
+
+
+async def _announce_subway_vote_open(guild):
+    state = _get_subway_state(guild.id)
+    state["votes_open"] = True
+    state["last_vote_open_date"] = _sgt_now().date()
+
+    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    if text_channel:
+        await text_channel.send(
+            "Subway Thursday voting is now open! Vote with !vote @user. Closes at 10:00 PM SGT."
+        )
+
+
+async def _announce_subway_close(guild):
+    state = _get_subway_state(guild.id)
+    state["entries_open"] = False
+    state["votes_open"] = False
+    state["last_close_date"] = _sgt_now().date()
+
+    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    if not text_channel:
+        return
+
+    if not state["entries"]:
+        await text_channel.send("Subway Thursday is closed. No entries this week.")
+        return
+
+    if not state["votes"]:
+        await text_channel.send("Subway Thursday is closed. No votes were cast.")
+        return
+
+    tally = {}
+    for entry_user_id in state["votes"].values():
+        tally[entry_user_id] = tally.get(entry_user_id, 0) + 1
+
+    max_votes = max(tally.values())
+    winners = [user_id for user_id, count in tally.items() if count == max_votes]
+    winner_mentions = " ".join(f"<@{user_id}>" for user_id in winners)
+
+    await text_channel.send(
+        f"Subway Thursday is closed! Winner{'s' if len(winners) > 1 else ''}: {winner_mentions} "
+        f"with {max_votes} vote{'s' if max_votes != 1 else ''}."
+    )
+
+
+async def _subway_scheduler():
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        now = _sgt_now()
+        if now.weekday() == 3:
+            for guild in bot.guilds:
+                state = _get_subway_state(guild.id)
+                if now.time() >= SUBWAY_CLOSE_TIME:
+                    if state["last_close_date"] != now.date():
+                        await _announce_subway_close(guild)
+                elif now.time() >= SUBWAY_VOTE_OPEN_TIME:
+                    if state["last_vote_open_date"] != now.date():
+                        await _announce_subway_vote_open(guild)
+                elif now.time() >= SUBWAY_ENTRY_OPEN_TIME:
+                    if state["last_open_date"] != now.date():
+                        await _announce_subway_open(guild)
+
+        await asyncio.sleep(30)
 
 async def _guild_player(guild_id, guild):
     queue = GUILD_QUEUES[guild_id]
@@ -92,12 +306,24 @@ async def _guild_player(guild_id, guild):
 
 
 @bot.event
+async def on_ready():
+    global SUBWAY_SCHEDULER_TASK
+    if not SUBWAY_SCHEDULER_TASK or SUBWAY_SCHEDULER_TASK.done():
+        SUBWAY_SCHEDULER_TASK = asyncio.create_task(_subway_scheduler())
+
+
+@bot.event
 async def on_voice_state_update(member, before, after):
     if member.id == 431738148217815040 and before.channel is None and after.channel is not None:
         text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
-        if text_channel and os.path.exists(JOIN_IMAGE_PATH):
+        if text_channel:
             try:
-                await text_channel.send(file=discord.File(JOIN_IMAGE_PATH))
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(JOIN_IMAGE_URL) as response:
+                        response.raise_for_status()
+                        data = await response.read()
+                image_fp = io.BytesIO(data)
+                await text_channel.send(file=discord.File(image_fp, filename="adnan.webp"))
             except Exception as exc:
                 print(f"Failed to send join image: {exc}")
 
@@ -209,7 +435,95 @@ async def lobby_close(ctx):
 @bot.command(name="help")
 async def help_command(ctx):
     await ctx.send(
-        "Available commands: !5v5, !flex, !aram, !streetbrawl, !deadlock, !join, !close, !help"
+        "Available commands: !5v5, !flex, !aram, !streetbrawl, !deadlock, !join, !close, "
+        "!subway, !sandwich, !vote, !help"
     )
+
+
+@bot.command(name="subway")
+async def subway_info(ctx):
+    if not ctx.guild:
+        return
+    state = _get_subway_state(ctx.guild.id)
+    entries_status = "open" if state["entries_open"] else "closed"
+    votes_status = "open" if state["votes_open"] else "closed"
+    entries_count = len(state["entries"])
+    votes_count = len(state["votes"])
+    await ctx.send(
+        "Subway Thursday status (SGT): "
+        f"Entries {entries_status} (3:00-7:00 PM). "
+        f"Voting {votes_status} (7:00-10:00 PM). "
+        f"Entries: {entries_count}. Votes: {votes_count}."
+    )
+
+
+@bot.command(name="sandwich")
+async def subway_sandwich(ctx, *, entry: str):
+    if not ctx.guild:
+        return
+    now = _sgt_now()
+    if now.weekday() != 3:
+        await ctx.send("Subway Thursday entries are only accepted on Thursdays (SGT).")
+        return
+    state = _get_subway_state(ctx.guild.id)
+    if not state["entries_open"]:
+        await ctx.send("Subway Thursday entries are closed. It opens at 3:00 PM SGT.")
+        return
+
+    entry = entry.strip()
+    if not entry:
+        await ctx.send("Please include your sandwich details. Example: !sandwich turkey, jalapenos, chipotle")
+        return
+
+    parts = [part.strip() for part in entry.split(",") if part.strip()]
+    if not parts:
+        await ctx.send("Please include at least one menu item, separated by commas.")
+        return
+
+    invalid = [item for item in parts if _normalize_menu_item(item) not in SUBWAY_MENU_ITEMS]
+    if invalid:
+        invalid_list = ", ".join(invalid[:6])
+        suffix = "..." if len(invalid) > 6 else ""
+        await ctx.send(
+            "Some items are not on the menu: "
+            f"{invalid_list}{suffix}. Please use the attached menu."
+        )
+        return
+
+    state["entries"][ctx.author.id] = entry
+    receipt_lines = ["Subway Thursday Receipt", f"Customer: {ctx.author.display_name}", "Items:"]
+    receipt_lines.extend(f"- {item}" for item in parts)
+    receipt_lines.append("Total: 1 entry")
+    receipt_text = "\n".join(receipt_lines)
+    await ctx.send(f"{ctx.author.mention} submitted a sandwich entry.\n```\n{receipt_text}\n```")
+
+
+@bot.command(name="vote")
+async def subway_vote(ctx, member: discord.Member):
+    if not ctx.guild:
+        return
+    now = _sgt_now()
+    if now.weekday() != 3:
+        await ctx.send("Subway Thursday voting is only open on Thursdays (SGT).")
+        return
+    state = _get_subway_state(ctx.guild.id)
+    if not state["votes_open"]:
+        await ctx.send("Subway Thursday voting is closed. It opens at 7:00 PM SGT.")
+        return
+
+    if member.id == ctx.author.id:
+        await ctx.send("You cannot vote for your own sandwich.")
+        return
+
+    if member.id not in state["entries"]:
+        await ctx.send("That user does not have a sandwich entry.")
+        return
+
+    previous = state["votes"].get(ctx.author.id)
+    state["votes"][ctx.author.id] = member.id
+    if previous and previous != member.id:
+        await ctx.send(f"{ctx.author.mention} updated their vote to {member.mention}.")
+    else:
+        await ctx.send(f"{ctx.author.mention} voted for {member.mention}.")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
