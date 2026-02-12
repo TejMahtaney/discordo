@@ -33,7 +33,6 @@ USER_ANNOUNCEMENTS = {
     289662721325268994:"Salutations my good sir Aryan, what a glorious day to be in your presence. May your harvest be ever bountiful.",
     1369250468152217664:"Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT!",
     431738148217815040:"Shut Up! A Schizophrenic is speaking. Listen and learn.",
-    306421962316578816:"Rolling for a gank saving throw............ its a 4. you are cooked.",
     403898699413061643:"ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY! Fucking shitty ass aryan bot clearly mogged by gree",
     454277839508733963:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK",
     245470334512398337:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK",
@@ -172,6 +171,18 @@ def _get_subway_state(guild_id):
 
 def _get_subway_channel(guild):
     return discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+
+
+def _get_announcement_message(member_id):
+    if member_id == 306421962316578816:
+        roll = random.randint(1, 20)
+        if roll == 1:
+            return f"Rolling for a gank saving throw............ its a {roll}. Its naked adventure round 2."
+        if roll == 20:
+            return f"Rolling for a gank saving throw............ its a nat {roll}. Unfortunately, you are still cooked."
+        else:
+            return f"Rolling for a gank saving throw............ its a {roll}. you are cooked."
+    return USER_ANNOUNCEMENTS.get(member_id)
 
 
 async def _send_subway_message(ctx, content=None, **kwargs):
@@ -340,17 +351,17 @@ async def on_voice_state_update(member, before, after):
             except Exception as exc:
                 print(f"Failed to send join image: {exc}")
 
-    if member.id in USER_ANNOUNCEMENTS and before.channel is None and after.channel is not None:
+    if before.channel is None and after.channel is not None:
         guild_id = member.guild.id
         if guild_id not in GUILD_QUEUES:
             GUILD_QUEUES[guild_id] = asyncio.Queue()
+        message = _get_announcement_message(member.id)
+        if message:
+            await GUILD_QUEUES[guild_id].put((member, after.channel, message))
 
-        message = USER_ANNOUNCEMENTS[member.id]
-        await GUILD_QUEUES[guild_id].put((member, after.channel, message))
-
-        task = GUILD_PLAYER_TASKS.get(guild_id)
-        if not task or task.done():
-            GUILD_PLAYER_TASKS[guild_id] = asyncio.create_task(_guild_player(guild_id, member.guild))
+            task = GUILD_PLAYER_TASKS.get(guild_id)
+            if not task or task.done():
+                GUILD_PLAYER_TASKS[guild_id] = asyncio.create_task(_guild_player(guild_id, member.guild))
 
 
 def _get_lobby(guild_id, mode):
