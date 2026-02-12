@@ -38,7 +38,8 @@ USER_ANNOUNCEMENTS = {
     245470334512398337:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK",
     306704268642091009:"One Business Please",
     272336035189489669:"Today in the mental asylum, lets see if Gideon is reformed after the reformation of Gideon.",
-    291461481659236352:"Chuds! Assemble!"
+    291461481659236352:"Chuds! Assemble!",
+    444500680716320810:"Aryan Beware!!!"
 }
 
 JOIN_IMAGE_CHANNEL_NAME = "general-assembly-hall"
