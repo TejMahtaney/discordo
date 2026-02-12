@@ -477,13 +477,8 @@ async def subway_sandwich(ctx, *, entry: str):
     if not ctx.guild:
         return
     now = _sgt_now()
-    if now.weekday() != 3:
-        await _send_subway_message(ctx, "Subway Thursday entries are only accepted on Thursdays (SGT).")
-        return
     state = _get_subway_state(ctx.guild.id)
-    if not state["entries_open"]:
-        await _send_subway_message(ctx, "Subway Thursday entries are closed. It opens at 3:00 PM SGT.")
-        return
+    in_event_window = now.weekday() == 3 and state["entries_open"]
 
     entry = entry.strip()
     if not entry:
@@ -505,14 +500,16 @@ async def subway_sandwich(ctx, *, entry: str):
         )
         return
 
-    state["entries"][ctx.author.id] = entry
+    if in_event_window:
+        state["entries"][ctx.author.id] = entry
     receipt_lines = ["Subway Thursday Receipt", f"Customer: {ctx.author.display_name}", "Items:"]
     receipt_lines.extend(f"- {item}" for item in parts)
     receipt_lines.append("Total: 1 entry")
     receipt_text = "\n".join(receipt_lines)
+    status_note = "" if in_event_window else " (not part of Subway Thursday)"
     await _send_subway_message(
         ctx,
-        f"{ctx.author.mention} submitted a sandwich entry.\n```\n{receipt_text}\n```",
+        f"{ctx.author.mention} submitted a sandwich entry{status_note}.\n```\n{receipt_text}\n```",
     )
 
 
