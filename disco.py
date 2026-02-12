@@ -465,6 +465,7 @@ async def subway_info(ctx):
     entries_count = len(state["entries"])
     votes_count = len(state["votes"])
     await _send_subway_message(
+        ctx,
         "Subway Thursday status (SGT): "
         f"Entries {entries_status} (3:00-7:00 PM). "
         f"Voting {votes_status} (7:00-10:00 PM). "
