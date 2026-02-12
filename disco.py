@@ -44,7 +44,7 @@ USER_ANNOUNCEMENTS = {
 JOIN_IMAGE_CHANNEL_NAME = "general-assembly-hall"
 JOIN_IMAGE_URL = "https://raw.githubusercontent.com/TejMahtaney/discordo/main/adnan.webp"
 
-SUBWAY_CHANNEL_NAME = "general-assembly-hall"
+SUBWAY_CHANNEL_NAME = "gree"
 SUBWAY_TZ = ZoneInfo("Asia/Singapore")
 SUBWAY_ENTRY_OPEN_TIME = dt_time(15, 0)
 SUBWAY_VOTE_OPEN_TIME = dt_time(19, 0)
@@ -169,6 +169,18 @@ def _get_subway_state(guild_id):
     )
 
 
+def _get_subway_channel(guild):
+    return discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+
+
+async def _send_subway_message(ctx, content=None, **kwargs):
+    channel = _get_subway_channel(ctx.guild) if ctx.guild else None
+    if channel:
+        await channel.send(content, **kwargs)
+    else:
+        await ctx.send(content, **kwargs)
+
+
 async def _announce_subway_open(guild):
     state = _get_subway_state(guild.id)
     state["entries_open"] = True
@@ -177,7 +189,7 @@ async def _announce_subway_open(guild):
     state["votes"] = {}
     state["last_open_date"] = _sgt_now().date()
 
-    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    text_channel = _get_subway_channel(guild)
     if text_channel:
         message = (
             "Subway Thursday is now open for entries!\n"
@@ -196,7 +208,7 @@ async def _announce_subway_vote_open(guild):
     state["votes_open"] = True
     state["last_vote_open_date"] = _sgt_now().date()
 
-    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    text_channel = _get_subway_channel(guild)
     if text_channel:
         await text_channel.send(
             "Subway Thursday voting is now open! Vote with !vote @user. Closes at 10:00 PM SGT."
@@ -209,7 +221,7 @@ async def _announce_subway_close(guild):
     state["votes_open"] = False
     state["last_close_date"] = _sgt_now().date()
 
-    text_channel = discord.utils.get(guild.text_channels, name=SUBWAY_CHANNEL_NAME)
+    text_channel = _get_subway_channel(guild)
     if not text_channel:
         return
 
@@ -405,11 +417,13 @@ async def lobby_join(ctx):
     role_mention = None
     if mode == "5v5":
         role_mention = _get_role_mention(ctx.guild, "5v5")
-    announce = f" {role_mention}" if role_mention else ""
+    ping_role = mode == "5v5" and role_mention and len(lobby) >= 9
+    announce = f" {role_mention}" if ping_role else ""
     await ctx.send(f"{announce}{mode} lobby ({len(lobby)}/{size}): {mentions}")
 
     if len(lobby) >= size:
-        await ctx.send(f"{mode} lobby is full! {mentions}")
+        full_announce = f" {role_mention}" if ping_role else ""
+        await ctx.send(f"{full_announce}{mode} lobby is full! {mentions}")
         GUILD_LOBBIES[guild_id][mode] = []
         GUILD_ACTIVE_MODE[guild_id] = None
 
@@ -449,7 +463,7 @@ async def subway_info(ctx):
     votes_status = "open" if state["votes_open"] else "closed"
     entries_count = len(state["entries"])
     votes_count = len(state["votes"])
-    await ctx.send(
+    await _send_subway_message(
         "Subway Thursday status (SGT): "
         f"Entries {entries_status} (3:00-7:00 PM). "
         f"Voting {votes_status} (7:00-10:00 PM). "
@@ -463,28 +477,28 @@ async def subway_sandwich(ctx, *, entry: str):
         return
     now = _sgt_now()
     if now.weekday() != 3:
-        await ctx.send("Subway Thursday entries are only accepted on Thursdays (SGT).")
+        await _send_subway_message(ctx, "Subway Thursday entries are only accepted on Thursdays (SGT).")
         return
     state = _get_subway_state(ctx.guild.id)
     if not state["entries_open"]:
-        await ctx.send("Subway Thursday entries are closed. It opens at 3:00 PM SGT.")
+        await _send_subway_message(ctx, "Subway Thursday entries are closed. It opens at 3:00 PM SGT.")
         return
 
     entry = entry.strip()
     if not entry:
-        await ctx.send("Please include your sandwich details. Example: !sandwich turkey, jalapenos, chipotle")
+        await _send_subway_message(ctx, "Please include your sandwich details. Example: !sandwich turkey, jalapenos, chipotle")
         return
 
     parts = [part.strip() for part in entry.split(",") if part.strip()]
     if not parts:
-        await ctx.send("Please include at least one menu item, separated by commas.")
+        await _send_subway_message(ctx, "Please include at least one menu item, separated by commas.")
         return
 
     invalid = [item for item in parts if _normalize_menu_item(item) not in SUBWAY_MENU_ITEMS]
     if invalid:
         invalid_list = ", ".join(invalid[:6])
         suffix = "..." if len(invalid) > 6 else ""
-        await ctx.send(
+        await _send_subway_message(
             "Some items are not on the menu: "
             f"{invalid_list}{suffix}. Please use the attached menu."
         )
@@ -495,7 +509,10 @@ async def subway_sandwich(ctx, *, entry: str):
     receipt_lines.extend(f"- {item}" for item in parts)
     receipt_lines.append("Total: 1 entry")
     receipt_text = "\n".join(receipt_lines)
-    await ctx.send(f"{ctx.author.mention} submitted a sandwich entry.\n```\n{receipt_text}\n```")
+    await _send_subway_message(
+        ctx,
+        f"{ctx.author.mention} submitted a sandwich entry.\n```\n{receipt_text}\n```",
+    )
 
 
 @bot.command(name="vote")
@@ -504,26 +521,26 @@ async def subway_vote(ctx, member: discord.Member):
         return
     now = _sgt_now()
     if now.weekday() != 3:
-        await ctx.send("Subway Thursday voting is only open on Thursdays (SGT).")
+        await _send_subway_message(ctx, "Subway Thursday voting is only open on Thursdays (SGT).")
         return
     state = _get_subway_state(ctx.guild.id)
     if not state["votes_open"]:
-        await ctx.send("Subway Thursday voting is closed. It opens at 7:00 PM SGT.")
+        await _send_subway_message(ctx, "Subway Thursday voting is closed. It opens at 7:00 PM SGT.")
         return
 
     if member.id == ctx.author.id:
-        await ctx.send("You cannot vote for your own sandwich.")
+        await _send_subway_message(ctx, "You cannot vote for your own sandwich.")
         return
 
     if member.id not in state["entries"]:
-        await ctx.send("That user does not have a sandwich entry.")
+        await _send_subway_message(ctx, "That user does not have a sandwich entry.")
         return
 
     previous = state["votes"].get(ctx.author.id)
     state["votes"][ctx.author.id] = member.id
     if previous and previous != member.id:
-        await ctx.send(f"{ctx.author.mention} updated their vote to {member.mention}.")
+        await _send_subway_message(ctx, f"{ctx.author.mention} updated their vote to {member.mention}.")
     else:
-        await ctx.send(f"{ctx.author.mention} voted for {member.mention}.")
+        await _send_subway_message(ctx, f"{ctx.author.mention} voted for {member.mention}.")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
