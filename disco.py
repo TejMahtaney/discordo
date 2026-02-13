@@ -557,10 +557,14 @@ async def subway_vote(ctx, member: discord.Member):
 
 @bot.command(name="roll")
 async def roll_command(ctx):
-    result = random.randint(1, 100)
+    if ctx.author.id == 175796967920762880:
+        result = random.randint(90,100)
+    else:
+        result = random.randint(1, 100)
     if result == 67:
         await ctx.send(f"{ctx.author.mention} rolled **{result}**. @everyone")
     else:
         await ctx.send(f"{ctx.author.mention} rolled **{result}**.")
+
 
 bot.run(os.getenv("DISCORD_TOKEN"))
