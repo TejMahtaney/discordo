@@ -557,8 +557,10 @@ async def subway_vote(ctx, member: discord.Member):
 
 @bot.command(name="roll")
 async def roll_command(ctx):
-    if ctx.author.id == 175796967920762880:
+    if ctx.author.id == 175796967920762880 or ctx.author.id == 403898699413061643:
         result = random.randint(90,100)
+    elif ctx.author.id == 371914348656066561 or ctx.author.id == 1369250468152217664:
+        result = random.randint(1,10)
     else:
         result = random.randint(1, 100)
     if result == 67:
@@ -568,3 +570,4 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
