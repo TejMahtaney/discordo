@@ -33,7 +33,7 @@ USER_ANNOUNCEMENTS = {
     289662721325268994:"Salutations my good sir Aryan, what a glorious day to be in your presence. May your harvest be ever bountiful.",
     1369250468152217664:"Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT!",
     431738148217815040:"Shut Up! A Schizophrenic is speaking. Listen and learn.",
-    403898699413061643:"ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY!ITS NOT MY BIRTHDAY! Fucking shitty ass aryan bot clearly mogged by gree",
+    1470830914874380381:"Fucking shitty ass aryan bot clearly mogged by gree",
     454277839508733963:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!",
     245470334512398337:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!",
     306704268642091009:"One Business Please",
@@ -570,4 +570,5 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
