@@ -30,7 +30,7 @@ GUILD_LOBBIES = {}
 GUILD_ACTIVE_MODE = {}
 
 USER_ANNOUNCEMENTS = {
-    289662721325268994:"Salutations my good sir Aryan, what a glorious day to be in your presence. May your harvest be ever bountiful.",
+    289662721325268994:"Salutations my good sir Aryan, what a glorious day to be in your presence. May your steaks be ever so juicy and your lobster be ever so buttery.",
     1369250468152217664:"Glennon fattie go study! No more TFT! Glennon fattie go study! No more TFT!",
     431738148217815040:"Shut Up! A Schizophrenic is speaking. Listen and learn.",
     454277839508733963:"DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!DEADLOCK!",
@@ -569,6 +569,7 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
