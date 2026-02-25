@@ -43,6 +43,7 @@ USER_ANNOUNCEMENTS = {
 
 JOIN_IMAGE_CHANNEL_NAME = "general-assembly-hall"
 JOIN_IMAGE_URL = "https://raw.githubusercontent.com/TejMahtaney/discordo/main/adnan.webp"
+ARYAN_JOIN_IMAGE_URL = "https://raw.githubusercontent.com/TejMahtaney/discordo/main/aryangym.jpeg"
 
 SUBWAY_CHANNEL_NAME = "gree"
 SUBWAY_TZ = ZoneInfo("Asia/Singapore")
@@ -351,6 +352,19 @@ async def on_voice_state_update(member, before, after):
             except Exception as exc:
                 print(f"Failed to send join image: {exc}")
 
+    if member.id == 431738148217815040 and before.channel is None and after.channel is not None:
+        text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
+        if text_channel:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(ARYAN_JOIN_IMAGE_URL) as response:
+                        response.raise_for_status()
+                        data = await response.read()
+                image_fp = io.BytesIO(data)
+                await text_channel.send(file=discord.File(image_fp, filename="aryanjpg.jpeg"))
+            except Exception as exc:
+                print(f"Failed to send join image: {exc}")
+
     if before.channel is None and after.channel is not None:
         guild_id = member.guild.id
         if guild_id not in GUILD_QUEUES:
@@ -569,6 +583,7 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
