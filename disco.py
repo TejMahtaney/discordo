@@ -352,7 +352,7 @@ async def on_voice_state_update(member, before, after):
             except Exception as exc:
                 print(f"Failed to send join image: {exc}")
 
-    if member.id == 431738148217815040 and before.channel is None and after.channel is not None:
+    if member.id == 289662721325268994 and before.channel is None and after.channel is not None:
         text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
         if text_channel:
             try:
@@ -361,7 +361,7 @@ async def on_voice_state_update(member, before, after):
                         response.raise_for_status()
                         data = await response.read()
                 image_fp = io.BytesIO(data)
-                await text_channel.send(file=discord.File(image_fp, filename="aryanjpg.jpeg"))
+                await text_channel.send(file=discord.File(image_fp, filename="aryangym.jpeg"))
             except Exception as exc:
                 print(f"Failed to send join image: {exc}")
 
@@ -583,6 +583,7 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
