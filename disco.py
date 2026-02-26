@@ -1,4 +1,5 @@
 import discord
+import random
 from discord.ext import commands
 import asyncio
 from gtts import gTTS
@@ -353,17 +354,18 @@ async def on_voice_state_update(member, before, after):
                 print(f"Failed to send join image: {exc}")
 
     if member.id == 289662721325268994 and before.channel is None and after.channel is not None:
-        text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
-        if text_channel:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(ARYAN_JOIN_IMAGE_URL) as response:
-                        response.raise_for_status()
-                        data = await response.read()
-                image_fp = io.BytesIO(data)
-                await text_channel.send(file=discord.File(image_fp, filename="aryangym.jpeg"))
-            except Exception as exc:
-                print(f"Failed to send join image: {exc}")
+        if random.random()<0.05
+            text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
+            if text_channel:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(ARYAN_JOIN_IMAGE_URL) as response:
+                            response.raise_for_status()
+                            data = await response.read()
+                    image_fp = io.BytesIO(data)
+                    await text_channel.send(file=discord.File(image_fp, filename="aryangym.jpeg"))
+                except Exception as exc:
+                    print(f"Failed to send join image: {exc}")
 
     if before.channel is None and after.channel is not None:
         guild_id = member.guild.id
@@ -583,6 +585,7 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
