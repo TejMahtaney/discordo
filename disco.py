@@ -354,7 +354,7 @@ async def on_voice_state_update(member, before, after):
                 print(f"Failed to send join image: {exc}")
 
     if member.id == 289662721325268994 and before.channel is None and after.channel is not None:
-        if random.random()<0.05
+        if random.random()<0.05:
             text_channel = discord.utils.get(member.guild.text_channels, name=JOIN_IMAGE_CHANNEL_NAME)
             if text_channel:
                 try:
@@ -585,6 +585,7 @@ async def roll_command(ctx):
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
